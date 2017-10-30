@@ -1,0 +1,49 @@
+{
+	"classtype": "kCode",
+	"internalversion": 45,
+	"designtaskname": "Startup_Task",
+	"cvardefs": [
+		{
+			"name": "cl_SesiDf1",
+			"order": 1,
+			"type": "kObject",
+			"subtype": ".OMSQLDAM.OMSQLSESS",
+			"sublen": 0
+		},
+		{
+			"name": "cl_SesiLite",
+			"order": 3,
+			"type": "kObject",
+			"subtype": ".SQLITEDAM.SQLITESESS",
+			"sublen": 0
+		},
+		{
+			"name": "cl_SqlDf1",
+			"order": 2,
+			"type": "kObjectref",
+			"subtype": "",
+			"sublen": 0
+		},
+		{
+			"name": "cl_Sqlite",
+			"order": 4,
+			"type": "kObjectref",
+			"subtype": "",
+			"sublen": 0
+		}
+	],
+	"properties": {
+		"collectperformancedata": false,
+		"componenticon": 0,
+		"componenttype": "kCompStoreHidden",
+		"createdate": "2014-01-25 10:14:45",
+		"desc": "",
+		"editor": "",
+		"editordata": "",
+		"external": true,
+		"moddate": "2017-10-29 11:26:06",
+		"showascheckedout": false,
+		"userinfo": "",
+		"version": ""
+	}
+}

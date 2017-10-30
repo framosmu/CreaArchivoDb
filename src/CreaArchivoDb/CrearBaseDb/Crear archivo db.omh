@@ -1,0 +1,111 @@
+If $root.$cdata.$pathname=''
+	;  Solicitar qué base de datos df1 deseamos abrir para convertir a db
+	Calculate Path_Datos as pick(pos(sys(6),'X')>0,sys(215),sys(209))     ;; Directorio de la aplicación
+	Do FileOps.$getfilename(Path_Datos,'Por favor, elija el archivo de datos df1 a transferir:',con('Archivos df1|',pick(pos(sys(6),'X')>0,'*.df1','*.df1')),Path_Datos)
+Else
+	;  Toma la actual base de datos df1 para convertirla a db
+	Calculate Path_Datos as $root.$cdata.$pathname     ;; Datos actuales
+End If
+;
+;  Abrir una sesión llamada "SESIDF1" y asociarla al objeto ref "cl_SqlDf1"
+Do cl_SesiDf1.$logon(Path_Datos,'','','SESIDF1')
+Do $sessions.SESIDF1.$newstatementref() Returns cl_SqlDf1
+;
+;  Para cargar en la lista "lo_Tablas" todas las Tables del archivo df1
+Do cl_SqlDf1.$tables()
+Do cl_SqlDf1.$fetch(lo_Tablas,kFetchAll)     ;; Carga todas las tablas en una variable de lista en la segunda columna "TableOrViewName"
+;
+;  Preguntar nombre y donde quiere guardar la base de datos SQlite (.db)
+Calculate lo_ArchivoDB as con($root.$cdata().$name,'.db')
+Do FileOps.$putfilename(lo_ArchivoDB,'Abrir la base de datos:','.db') Returns #F
+If flag true
+	
+	Do FileOps.$converthfspathtoposixpath(lo_ArchivoDB,lo_ArchivoDB) Returns #F     ;; Convierte el directorio a directorio sqlite
+	;
+	Do cl_SesiLite.$opencreate.$assign(kTrue)
+	Do cl_SesiLite.$logon(lo_ArchivoDB,'','','SESILITE')     ;; Abre la sesión "SESILITE" asociada al archivo db
+	Do $sessions.SESILITE.$newstatementref() Returns cl_Sqlite
+Else
+	;  Cerrar las sesiones
+	Do cl_SesiDf1.$logoff
+	Quit method
+End If
+
+;  Vamos a crear los schemas
+Set current list lo_Tablas
+For each line in list from 1 to #LN step 1
+	;  Working message Creando las Tablas... (Repeat count) {Creando las Tablas...}
+	;  Crear los shemas con los nombres de la segunda columna TableOrViewName
+	Do $schemas.$add(lo_Tablas.TableOrViewName)
+	;  Añadir contenido a los schemas
+	Do $sessions.SESIDF1.$makeschema($schemas.[lo_Tablas.TableOrViewName],lo_Tablas.TableOrViewName)
+End For
+Close working message
+;
+;  Crear las Tables
+Set current list lo_Tablas
+For each line in list from 1 to #LN step 1
+	;  Crear la Table lo_Tablas.TableOrViewName
+	Do lo_Row.$definefromsqlclass(lo_Tablas.TableOrViewName)
+	Do lo_Row.$sessionobject.$assign(cl_SesiDf1)
+	Calculate lo_TextoSQL as con('CREATE TABLE ',lo_Row.$servertablenames(),' (',lo_Row.$createnames(),') ')
+	;  Cambiar: 'SEQUENCE' por 'INTEGER PRIMARY KEY AUTOINCREMENT'
+	Calculate lo_TextoSQL as replace(lo_TextoSQL,'SEQUENCE','INTEGER PRIMARY KEY AUTOINCREMENT')
+	;  Ejecutar la sentencia "lo_TextoSQL" sobre la sesión cl_SesiLite con un $execdirect
+	Do cl_Sqlite.$execdirect(lo_TextoSQL) Returns lo_Estado
+End For
+
+;  Escribir los indices.
+Set current list lo_Tablas
+For each line in list from 1 to #LN step 1
+	Do cl_SqlDf1.$indexes(lo_Tablas.TableOrViewName,kStatementIndexAll)
+	Do cl_SqlDf1.$fetch(lo_Indices,kFetchAll)
+	Set current list lo_Indices
+	For each line in list from 1 to #LN step 1
+		If lo_Indices.Unique
+			Calculate lo_TextoSQL as con('CREATE UNIQUE INDEX ',lo_Indices.IndexName,' ON ',lo_Tablas.TableOrViewName,'(',lo_Indices.IndexName,')')
+		Else
+			Calculate lo_TextoSQL as con('CREATE INDEX ',lo_Indices.IndexName,' ON ',lo_Tablas.TableOrViewName,'(',lo_Indices.IndexName,')')
+		End If
+		;  Ejecutar la sentencia "lo_TextoSQL" sobre la sesión cl_SesiLite con un $execdirect
+		Do cl_Sqlite.$execdirect(lo_TextoSQL) Returns lo_Estado
+	End For
+	Set current list lo_Tablas
+End For
+
+;  Pasar los datos de la base df1 la nueva db
+Set current list lo_Tablas
+For each line in list from 1 to #LN step 1
+	Working message Tranfiriendo los datos.../-1073735804,-1073735800;50;65;60 (Cancel button) {Transfiriendo los datos del archivo "[lo_Tablas.TableOrViewName]"...}     ;; 65 archivos
+	Redraw working message
+	Do lo_RowLite.$definefromsqlclass(lo_Tablas.TableOrViewName)
+	Do lo_RowDf1.$definefromsqlclass(lo_Tablas.TableOrViewName)
+	
+	Do lo_RowDf1.$sessionobject.$assign(cl_SesiDf1)
+	Do lo_RowDf1.$select()
+	Do lo_RowDf1.$fetch() Returns lo_Estado
+	While lo_Estado=kFetchOk
+		Calculate lo_RowLite as lo_RowDf1
+		Do lo_RowLite.$sessionobject.$assign(cl_SesiLite)
+		Do lo_RowLite.$insert() Returns #F
+		If flag false
+			OK message Error (Icon,Sound bell) {[lo_RowLite.$nativeerrortext()]}
+			;  Cerrar las sesiones
+			Do cl_SesiDf1.$logoff
+			Do cl_SesiLite.$logoff
+			Quit method
+			
+		End If
+		Do lo_RowDf1.$fetch() Returns lo_Estado
+	End While
+End For
+Close working message
+
+;  Eliminar los schemas que contenga la librería para que no exista acumulación de schemas de diferentes librerías
+Do $schemas.$sendall($schemas.$remove($schemas.$first()))
+
+;  Cerrar las sesiones
+Do cl_SesiDf1.$logoff
+Do cl_SesiLite.$logoff
+
+OK message Atención (Icon,Sound bell) {El archivo "(.db)" ha sido creado para su uso con SQL.}

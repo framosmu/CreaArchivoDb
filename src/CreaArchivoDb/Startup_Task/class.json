@@ -1,0 +1,34 @@
+{
+	"classtype": "kTask",
+	"internalversion": 19,
+	"tvardefs": [
+
+	],
+	"cvardefs": [
+		{
+			"name": "cl_SesiLite",
+			"order": 1,
+			"type": "kObject",
+			"subtype": ".SQLITEDAM.SQLITESESS",
+			"sublen": 0
+		}
+	],
+	"ivardefs": [
+
+	],
+	"properties": {
+		"collectperformancedata": false,
+		"componenticon": 0,
+		"componenttype": "kCompStoreHidden",
+		"createdate": "2014-01-11 10:15:00",
+		"desc": "",
+		"editor": "",
+		"editordata": "",
+		"external": false,
+		"issupercomponent": false,
+		"moddate": "2017-10-29 11:26:44",
+		"showascheckedout": false,
+		"userinfo": "",
+		"version": ""
+	}
+}
