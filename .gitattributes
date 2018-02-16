@@ -3,4 +3,6 @@
 # Declare files that will always have CRLF line endings on checkout.
 * .omh text eol=crlf
 # Prevent png images from being normalized
-* .png -text
+*.png binary
+*.jpg binary
+*.lbs binary
